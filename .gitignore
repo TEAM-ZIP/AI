@@ -1,0 +1,6 @@
+.env
+crawling/credentials.json
+
+crawling/token.pickle
+
+crawling/service_account.json
