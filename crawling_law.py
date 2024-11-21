@@ -2,10 +2,10 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import crawling_on #자립정보on 크롤링 
+import upload_drive
 
 #Google Drive API 인증
-drive_service=crawling_on.authenticate_google_drive()
+drive_service=upload_drive.authenticate_google_drive()
 
 # Webdriver 설정 (Chrome 사용)
 driver = webdriver.Chrome() 
@@ -35,20 +35,13 @@ try:
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div.post-content"))
             )
 
-            # resource 폴더 경로 설정
-            resource_folder = "resource"
-
-            # resource 폴더가 없으면 생성
-            if not os.path.exists(resource_folder):
-                os.makedirs(resource_folder)
-
             # 텍스트 업로드
             text_content = editor_view.text
             if text_content:
                 text_data = text_content.encode('utf-8')
                 safe_title = ''.join(c for c in title if c.isalnum() or c in (' ', '_'))
-                text_file_name = f"{idx}_{safe_title[:50]}.txt"            
-                crawling_on.upload_to_drive(drive_service,text_file_name,text_data,"text/plain")
+                text_file_name = f"law_{idx}_{safe_title[:50]}.txt"            
+                upload_drive.upload_to_drive(drive_service,text_file_name,text_data,"text/plain")
 
             # 원래 페이지로 돌아가기
             driver.back()
