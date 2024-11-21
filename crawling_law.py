@@ -2,10 +2,10 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-import time
-import os
+import crawling_on #자립정보on 크롤링 
 
+#Google Drive API 인증
+drive_service=crawling_on.authenticate_google_drive()
 
 # Webdriver 설정 (Chrome 사용)
 driver = webdriver.Chrome() 
@@ -42,15 +42,13 @@ try:
             if not os.path.exists(resource_folder):
                 os.makedirs(resource_folder)
 
-            # 텍스트 내용 가져와서 저장
+            # 텍스트 업로드
             text_content = editor_view.text
-            safe_title = ''.join(c for c in title if c.isalnum() or c in (' ', '_'))
-            text_filename = f"{idx}_{safe_title[:50]}.txt"            
-            text_file_path = os.path.join(resource_folder, text_filename)
-
-            with open(text_file_path, "w", encoding="utf-8") as file:
-                file.write(text_content)
-            print(f"Saved text content to {text_filename}.")
+            if text_content:
+                text_data = text_content.encode('utf-8')
+                safe_title = ''.join(c for c in title if c.isalnum() or c in (' ', '_'))
+                text_file_name = f"{idx}_{safe_title[:50]}.txt"            
+                crawling_on.upload_to_drive(drive_service,text_file_name,text_data,"text/plain")
 
             # 원래 페이지로 돌아가기
             driver.back()
