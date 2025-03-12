@@ -1,0 +1,17 @@
+# Python 관련 파일 및 폴더
+__pycache__/
+*.pyc
+*.pyo
+
+# Chroma DB 폴더
+chroma/
+
+# 환경 설정 파일
+.env
+service_account.json
+token.pickle
+credentials.json
+
+# macOS에서 생성되는 시스템 파일
+.DS_Store
+
