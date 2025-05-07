@@ -17,7 +17,6 @@ class BookEmbeddingRequest(BaseModel):
     book_id: str
     title: str
     book_image_url: str
-    authors: List[str]
     book_type: Literal["normal", "indep"]
     description: str  # 벡터 생성용
 
@@ -38,7 +37,6 @@ async def embed_book(req: BookEmbeddingRequest):
             "bookId": req.book_id,
             "title": req.title,
             "bookImageUrl": req.book_image_url,
-            "authors": req.authors,
             "bookType": req.book_type
         }]
     )
