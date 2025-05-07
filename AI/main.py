@@ -4,10 +4,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.chat import router as chat_router
 from routes.bookEmbedding import router as embedding_router
 from routes.userProfile import router as profile_router
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from clients.chroma import chroma_client
+
 
 load_dotenv()
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    chroma_client.persist()
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
