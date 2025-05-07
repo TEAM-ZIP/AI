@@ -70,7 +70,12 @@ async def chat(req: ChatRequest):
         if spring_res.status_code != 200:
             return {"message": "리뷰가 부족하고 인기 도서를 불러오지 못했어요 😢", "books": []}
 
-        books_raw = spring_res.json()["data"]["booksnapPreview"][:2]
+        try:
+            books_raw = spring_res.json().get("data", {}).get("booksnapPreview", [])[:2]
+        except Exception as e:
+            print("🔥 spring 응답 처리 중 에러:", e)
+            return {"message": "인기 도서를 불러오는 중 문제가 발생했어요 😢", "books": []}
+
         book_cards = []
         for b in books_raw:
             info = b["bookInfo"]
