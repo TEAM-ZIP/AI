@@ -36,7 +36,7 @@ print(f"\n📦 컬렉션 '{collection_name}'에는 총 {count}개의 데이터�
 if count == 0:
     print("⚠️ 저장된 데이터가 없습니다.")
 else:
-    data = collection.get(include=["ids", "metadatas"])
+    data = collection.get(include=["metadatas"])
     for i in range(len(data["ids"])):
         print(f"[{i+1}] ID: {data['ids'][i]}")
         print("메타데이터:", data["metadatas"][i])
