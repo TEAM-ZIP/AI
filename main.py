@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.chat import router as chat_router
 from routes.bookEmbedding import router as embedding_router
 from routes.userProfile import router as profile_router
+from routes.updateBook import router as update_router
 from fastapi import FastAPI
 
 load_dotenv()
@@ -22,3 +23,4 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(embedding_router)
 app.include_router(profile_router)
+app.include_router(update_router)

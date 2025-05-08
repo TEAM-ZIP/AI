@@ -40,7 +40,8 @@ async def embed_book(req: BookEmbeddingRequest):
             "bookId": req.book_id,
             "title": req.title,
             "bookImageUrl": req.book_image_url,
-            "bookType": req.book_type
+            "bookType": req.book_type,
+            "description" : req.description
         }]
     )
     return {"status": "✅ 책 임베딩 완료", "book_id": req.book_id}
