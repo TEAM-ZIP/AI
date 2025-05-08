@@ -166,7 +166,7 @@ async def chat(req: ChatRequest):
     summary_books = "\n".join([f"{book['title']}" for book in top_books])
     final_prompt = f"""사용자의 질문: '{req.message}'\n추천 도서: {summary_books}
 
-    위 도서들을 사용자에게 자연스럽게 추천해줘. 책 제목, 책 설명 외에는 언급하지 말고, 이미지나 링크는 포함하지 마.
+    위 도서들을 모두 사용자에게 자연스럽게 추천해줘. 책 제목, 책 설명 외에는 언급하지 말고, 이미지나 링크는 포함하지 마.
     """
 
     user_histories[req.user_id].append({"role": "user", "content": final_prompt})
