@@ -124,6 +124,7 @@ async def chat(req: ChatRequest):
         include=["metadatas"]
     )
     candidates = results["metadatas"][0]
+    print("후보 도서 10권", candidates)
 
     rerank_prompt = f"""아래는 추천 후보 도서 10개입니다.
 사용자의 질문은 '{req.message}'입니다.
@@ -137,7 +138,23 @@ async def chat(req: ChatRequest):
             {"role": "user", "content": rerank_prompt},
         ],
     )
-    top_titles = json.loads(rerank_response.choices[0].message.content)
+    reranked_text = rerank_response.choices[0].message.content.strip()
+
+    if not reranked_text:
+        return {
+        "message": "GPT가 도서 재정렬 응답을 반환하지 않았습니다.",
+        "error": "응답이 비어 있음"
+        }
+
+    try:
+        top_titles = json.loads(reranked_text)
+    except Exception as e:
+        return {
+        "message": "GPT 응답이 올바른 JSON 형식이 아닙니다.",
+        "raw": reranked_text,
+        "error": str(e)
+        }
+
     top_books = [book for book in candidates if book.get("title") in top_titles]
 
     final_prompt = f"""사용자의 질문: '{req.message}'\n추천 도서:\n{top_books}"""
