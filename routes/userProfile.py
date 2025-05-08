@@ -47,25 +47,31 @@ async def update_user_profile(req: ReviewRequest):
     except json.JSONDecodeError:
         return {"error": "GPT가 올바른 JSON을 반환하지 않았습니다.", "raw": profile_json}
 
+    # ✅ 리스트 값을 문자열로 변환
+    cleaned_metadata = {
+        k: ", ".join(v) if isinstance(v, list) else v
+        for k, v in parsed_profile.items()
+    }
+
     # 2. 성향 요약 전체를 문자열로 만들어서 임베딩
     summary_text = (
-        "주요 선호 장르: " + ", ".join(parsed_profile.get("주요 선호 장르", [])) + "\n" +
-        "스타일 키워드: " + ", ".join(parsed_profile.get("스타일 키워드", [])) + "\n" +
-        "독서 성향 설명: " + parsed_profile.get("독서 성향 설명", "")
+        "주요 선호 장르: " + cleaned_metadata.get("주요 선호 장르", "") + "\n" +
+        "스타일 키워드: " + cleaned_metadata.get("스타일 키워드", "") + "\n" +
+        "독서 성향 설명: " + cleaned_metadata.get("독서 성향 설명", "")
     )
 
     # 3. 임베딩 생성
     embedding_response = client.embeddings.create(
         model="text-embedding-3-small",
-        input=summary_text
+        input=summary_text 
     )
+
     embedding = embedding_response.data[0].embedding
 
-    # 4. 저장
+    # 4. ChromaDB에 저장
     profile_collection.add(
         ids=[req.user_id],
         embeddings=[embedding],
-        metadatas=[parsed_profile]
+        metadatas=[cleaned_metadata]
     )
 
-    return {"status": "✅ GPT 기반 성향 저장 완료", "profile": parsed_profile}
