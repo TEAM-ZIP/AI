@@ -35,11 +35,15 @@ async def chat(req: ChatRequest):
     # ✅ Step 1. 책 관련 여부 판단
     # 1-1. 책 관련 여부 판단
     intent_prompt = f"""
-    다음 사용자의 입력이 책 추천 대화인지 판단해주세요.
-    응답은 반드시 'yes' 또는 'no'로만 해주세요.
+    다음 사용자의 입력이 책과 관련된 대화인지 판단해주세요. 
+    질문이 책을 직접 추천해달라는 명확한 요청이 아니어도, 
+    책, 독서, 작가, 장르 등에 대해 언급하거나 관심을 보이면 'yes'라고 답해주세요.
+
+    반드시 'yes' 또는 'no'로만 응답해야 합니다.
 
     입력: "{req.message}"
     """
+
     intent_check = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -127,7 +131,6 @@ async def chat(req: ChatRequest):
         include=["metadatas"]
     )
     candidates = results["metadatas"][0]
-    print("후보 도서 10권", candidates)
 
     rerank_prompt = f"""아래는 추천 후보 도서 10개입니다.
 사용자의 질문은 '{req.message}'입니다.
@@ -160,8 +163,11 @@ async def chat(req: ChatRequest):
         }
 
     top_books = [book for book in candidates if book.get("title") in top_titles]
+    summary_books = "\n".join([f"{book['title']}" for book in top_books])
+    final_prompt = f"""사용자의 질문: '{req.message}'\n추천 도서: {summary_books}
 
-    final_prompt = f"""사용자의 질문: '{req.message}'\n추천 도서:\n{top_books}"""
+    위 도서들을 사용자에게 자연스럽게 추천해줘. 책 제목, 책 설명 외에는 언급하지 말고, 이미지나 링크는 포함하지 마.
+    """
 
     user_histories[req.user_id].append({"role": "user", "content": final_prompt})
 
