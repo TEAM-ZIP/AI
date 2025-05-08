@@ -32,7 +32,7 @@ async def chat(req: ChatRequest):
     user_histories[req.user_id].append({"role": "user", "content": req.message})
 
     # ✅ Step 1. 사용자 임베딩이 없을 경우
-    if not profile or not profile["embeddings"]:
+    if not profile or len(profile["embeddings"]) == 0:
         # 1-1. 책 관련 여부 판단
         intent_prompt = f"""
 다음 사용자의 입력이 책 추천 대화인지 판단해주세요.
