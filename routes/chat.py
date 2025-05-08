@@ -53,6 +53,7 @@ async def chat(req: ChatRequest):
     )
 
     is_book_related = intent_check.choices[0].message.content.strip().lower() == "yes"
+    print("📌 책 관련 여부 판단 응답:", is_book_related)
 
     # 1-2. 책 관련이 아니라면: 히스토리 기반 응답만
     if not is_book_related:
@@ -70,6 +71,7 @@ async def chat(req: ChatRequest):
     # ✅ Step 2. 책 관련 질문
     # 2-1. 임베딩 없으면
     if not profile or len(profile["embeddings"]) == 0:
+        print("📌 임베딩 없음:")
         spring_res = requests.get(
             "http://3.38.79.143:8080/api/booksnap/reviews",
             params={"page": 0, "size": 2, "sort": "trend"}
@@ -118,6 +120,7 @@ async def chat(req: ChatRequest):
 
     # 2-2. 사용자 임베딩이 있는 경우
     user_vector = profile["embeddings"][0]
+    print("📌 임베딩 있음")
     embedding_response = client.embeddings.create(
         model="text-embedding-3-small",
         input=req.message
@@ -131,7 +134,7 @@ async def chat(req: ChatRequest):
         include=["metadatas"]
     )
     candidates = results["metadatas"][0]
-
+    print("📌 후보 10개 생성")
     rerank_prompt = f"""아래는 추천 후보 도서 10개입니다.
 사용자의 질문은 '{req.message}'입니다.
 이 질문에 가장 적절한 책 2개를 골라 JSON 형식 문자열 배열로만 응답해주세요.
@@ -146,7 +149,7 @@ async def chat(req: ChatRequest):
     )
     response_text = rerank_response.choices[0].message.content.strip()
     response_text = re.sub(r"```json|```", "", response_text).strip()
-
+    print("📌 rerank 텍스트:", response_text)
     if not response_text:
         return {
         "message": "GPT가 도서 재정렬 응답을 반환하지 않았습니다.",
@@ -156,6 +159,7 @@ async def chat(req: ChatRequest):
     try:
         top_titles = json.loads(response_text)
     except Exception as e:
+        print("📌 GPT 응답이 올바른 JSON 형식이 아닙니다.")
         return {
         "message": "GPT 응답이 올바른 JSON 형식이 아닙니다.",
         "raw": response_text,
@@ -166,7 +170,9 @@ async def chat(req: ChatRequest):
     summary_books = "\n".join([f"{book['title']}" for book in top_books])
     final_prompt = f"""사용자의 질문: '{req.message}'\n추천 도서: {summary_books}
 
-    위 도서들을 모두 사용자에게 자연스럽게 추천해줘. 책 제목, 책 설명 외에는 언급하지 말고, 이미지나 링크는 포함하지 마.
+    아래 추천 도서들을 모두 사용자에게 자연스럽게 추천해줘. 책 제목, 책 설명 외에는 언급하지 말고, 이미지나 링크는 포함하지 마.
+
+    추천 도서들: {summary_books}
     """
 
     user_histories[req.user_id].append({"role": "user", "content": final_prompt})
