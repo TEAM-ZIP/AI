@@ -22,13 +22,16 @@ class BookEmbeddingRequest(BaseModel):
 
 @router.post("/book/embedding")
 async def embed_book(req: BookEmbeddingRequest):
-    input_text = f"{req.title} by {', '.join(req.authors)}\n{req.description}"
+    input_text = f"{req.title}\n{req.description}"
 
-    embedding = client.embeddings.create(
-        model="text-embedding-3-small",
-        input=input_text
-    )
-    vector = embedding.data[0].embedding
+    try:
+        embedding = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=input_text
+        )
+        vector = embedding.data[0].embedding
+    except Exception as e:
+        return {"status": "❌ 임베딩 실패", "error": str(e)}
 
     book_collection.add(
         ids=[req.book_id],

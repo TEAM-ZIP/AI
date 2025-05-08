@@ -4,6 +4,7 @@ import os, json, requests
 from dotenv import load_dotenv
 from openai import OpenAI
 from clients.chroma import book_collection, profile_collection
+import re
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -31,38 +32,40 @@ async def chat(req: ChatRequest):
     # 사용자 입력 추가
     user_histories[req.user_id].append({"role": "user", "content": req.message})
 
-    # ✅ Step 1. 사용자 임베딩이 없을 경우
-    if not profile or not profile["embeddings"]:
-        # 1-1. 책 관련 여부 판단
-        intent_prompt = f"""
-다음 사용자의 입력이 책 추천 대화인지 판단해주세요.
-응답은 반드시 'yes' 또는 'no'로만 해주세요.
+    # ✅ Step 1. 책 관련 여부 판단
+    # 1-1. 책 관련 여부 판단
+    intent_prompt = f"""
+    다음 사용자의 입력이 책 추천 대화인지 판단해주세요.
+    응답은 반드시 'yes' 또는 'no'로만 해주세요.
 
-입력: "{req.message}"
-"""
-        intent_check = client.chat.completions.create(
+    입력: "{req.message}"
+    """
+    intent_check = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "너는 입력이 책 관련인지 판단하는 판단기야. 반드시 yes 또는 no로만 대답해."},
+            {"role": "user", "content": intent_prompt},
+        ],
+    )
+
+    is_book_related = intent_check.choices[0].message.content.strip().lower() == "yes"
+
+    # 1-2. 책 관련이 아니라면: 히스토리 기반 응답만
+    if not is_book_related:
+        response = client.chat.completions.create(
             model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "너는 입력이 책 관련인지 판단하는 판단기야. 반드시 yes 또는 no로만 대답해."},
-                {"role": "user", "content": intent_prompt},
-            ],
+            messages=user_histories[req.user_id]
         )
-        is_book_related = intent_check.choices[0].message.content.strip().lower() == "yes"
+        reply = response.choices[0].message.content
+        user_histories[req.user_id].append({"role": "assistant", "content": reply})
+        return {
+            "message": reply,
+            "books": []
+        }
 
-        # 1-2. 책 관련이 아니라면: 히스토리 기반 응답만
-        if not is_book_related:
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=user_histories[req.user_id]
-            )
-            reply = response.choices[0].message.content
-            user_histories[req.user_id].append({"role": "assistant", "content": reply})
-            return {
-                "message": reply,
-                "books": []
-            }
-
-        # 1-3. 책 관련 질문 → 인기 책 기반 추천
+    # ✅ Step 2. 책 관련 질문
+    # 2-1. 임베딩 없으면
+    if not profile or len(profile["embeddings"]) == 0:
         spring_res = requests.get(
             "http://3.38.79.143:8080/api/booksnap/reviews",
             params={"page": 0, "size": 2, "sort": "trend"}
@@ -70,7 +73,12 @@ async def chat(req: ChatRequest):
         if spring_res.status_code != 200:
             return {"message": "리뷰가 부족하고 인기 도서를 불러오지 못했어요 😢", "books": []}
 
-        books_raw = spring_res.json()["data"]["booksnapPreview"][:2]
+        try:
+            books_raw = spring_res.json().get("data", {}).get("booksnapPreview", [])[:2]
+        except Exception as e:
+            print("🔥 spring 응답 처리 중 에러:", e)
+            return {"message": "인기 도서를 불러오는 중 문제가 발생했어요 😢", "books": []}
+
         book_cards = []
         for b in books_raw:
             info = b["bookInfo"]
@@ -104,7 +112,7 @@ async def chat(req: ChatRequest):
             "books": book_cards
         }
 
-    # ✅ Step 2. 사용자 임베딩이 있는 경우
+    # 2-2. 사용자 임베딩이 있는 경우
     user_vector = profile["embeddings"][0]
     embedding_response = client.embeddings.create(
         model="text-embedding-3-small",
@@ -119,6 +127,7 @@ async def chat(req: ChatRequest):
         include=["metadatas"]
     )
     candidates = results["metadatas"][0]
+    print("후보 도서 10권", candidates)
 
     rerank_prompt = f"""아래는 추천 후보 도서 10개입니다.
 사용자의 질문은 '{req.message}'입니다.
@@ -132,7 +141,24 @@ async def chat(req: ChatRequest):
             {"role": "user", "content": rerank_prompt},
         ],
     )
-    top_titles = json.loads(rerank_response.choices[0].message.content)
+    response_text = rerank_response.choices[0].message.content.strip()
+    response_text = re.sub(r"```json|```", "", response_text).strip()
+
+    if not response_text:
+        return {
+        "message": "GPT가 도서 재정렬 응답을 반환하지 않았습니다.",
+        "error": "응답이 비어 있음"
+        }
+
+    try:
+        top_titles = json.loads(response_text)
+    except Exception as e:
+        return {
+        "message": "GPT 응답이 올바른 JSON 형식이 아닙니다.",
+        "raw": response_text,
+        "error": str(e)
+        }
+
     top_books = [book for book in candidates if book.get("title") in top_titles]
 
     final_prompt = f"""사용자의 질문: '{req.message}'\n추천 도서:\n{top_books}"""
