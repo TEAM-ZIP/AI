@@ -75,3 +75,7 @@ async def update_user_profile(req: ReviewRequest):
         metadatas=[cleaned_metadata]
     )
 
+    return {
+        "status": "✅ GPT 기반 성향 저장 완료",
+        "profile": cleaned_metadata
+    }
