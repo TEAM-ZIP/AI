@@ -4,6 +4,7 @@ import os, json, requests
 from dotenv import load_dotenv
 from openai import OpenAI
 from clients.chroma import book_collection, profile_collection
+import re
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -138,20 +139,21 @@ async def chat(req: ChatRequest):
             {"role": "user", "content": rerank_prompt},
         ],
     )
-    reranked_text = rerank_response.choices[0].message.content.strip()
+    response_text = rerank_response.choices[0].message.content.strip()
+    response_text = re.sub(r"```json|```", "", response_text).strip()
 
-    if not reranked_text:
+    if not response_text:
         return {
         "message": "GPT가 도서 재정렬 응답을 반환하지 않았습니다.",
         "error": "응답이 비어 있음"
         }
 
     try:
-        top_titles = json.loads(reranked_text)
+        top_titles = json.loads(response_text)
     except Exception as e:
         return {
         "message": "GPT 응답이 올바른 JSON 형식이 아닙니다.",
-        "raw": reranked_text,
+        "raw": response_text,
         "error": str(e)
         }
 
