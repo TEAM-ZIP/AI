@@ -133,12 +133,24 @@ async def chat(req: ChatRequest):
         n_results=10,
         include=["metadatas"]
     )
+
     candidates = results["metadatas"][0]
-    print("📌 후보 10개 생성")
-    rerank_prompt = f"""아래는 추천 후보 도서 10개입니다.
-사용자의 질문은 '{req.message}'입니다.
-이 질문에 가장 적절한 책 2개를 골라 JSON 형식 문자열 배열로만 응답해주세요.
-후보 도서 목록: {candidates}"""
+
+    simplified_candidates = [
+        {"title": c.get("title", ""), "description": c.get("description", "")}
+    for c in candidates
+    ]
+
+    rerank_prompt = f"""
+다음은 추천 후보 도서 목록입니다:
+
+{json.dumps(simplified_candidates, ensure_ascii=False, indent=2)}
+
+사용자의 질문은 "{req.message}"입니다.
+가장 적절한 책 2권의 **제목만** JSON 문자열 배열로 응답해주세요.
+예시: ["책제목1", "책제목2"]
+"""
+
 
     rerank_response = client.chat.completions.create(
         model="gpt-4o",
@@ -150,29 +162,46 @@ async def chat(req: ChatRequest):
     response_text = rerank_response.choices[0].message.content.strip()
     response_text = re.sub(r"```json|```", "", response_text).strip()
     print("📌 rerank 텍스트:", response_text)
+
     if not response_text:
         return {
         "message": "GPT가 도서 재정렬 응답을 반환하지 않았습니다.",
         "error": "응답이 비어 있음"
         }
 
-    try:
-        top_titles = json.loads(response_text)
-    except Exception as e:
-        print("📌 GPT 응답이 올바른 JSON 형식이 아닙니다.")
+    parsed = json.loads(response_text)
+
+    # 응답이 ["책제목1", "책제목2"] 형태일 때
+    if isinstance(parsed, list) and all(isinstance(x, str) for x in parsed):
+        top_titles = parsed
+    # 응답이 [{"title": "제목"}] 형태일 때
+    elif isinstance(parsed, list) and all(isinstance(x, dict) and "title" in x for x in parsed):
+        top_titles = [x["title"] for x in parsed]
+    else:
         return {
-        "message": "GPT 응답이 올바른 JSON 형식이 아닙니다.",
-        "raw": response_text,
-        "error": str(e)
+            "message": "GPT 응답 형식이 예상과 달라요 😢",
+            "raw": response_text,
+            "error": "title 파싱 실패"
         }
 
     top_books = [book for book in candidates if book.get("title") in top_titles]
-    summary_books = "\n".join([f"{book['title']}" for book in top_books])
-    final_prompt = f"""사용자의 질문: '{req.message}'\n추천 도서: {summary_books}
+    print(top_books)
 
-    아래 추천 도서들을 모두 사용자에게 자연스럽게 추천해줘. 책 제목, 책 설명 외에는 언급하지 말고, 이미지나 링크는 포함하지 마.
+    if not top_books:
+        return {
+            "message": "추천할 책이 부족해요. 다른 질문을 해보실래요? 😊",
+            "books": []
+        }
+    
+    final_prompt = f"""
+    사용자가 책 추천을 요청했고, 다음 두 권의 도서가 선택되었습니다.
 
-    추천 도서들: {summary_books}
+    1. {top_books[0]["title"]}: {top_books[0]["description"]}
+    2. {top_books[1]["title"]}: {top_books[1]["description"]}
+
+    각 책을 따뜻하고 자연스럽게 소개해줘. 
+    책 제목과 설명만 담긴 길지 않은 추천 멘트로 마무리해줘.
+    링크나 이미지도 포함하지 마.
     """
 
     user_histories[req.user_id].append({"role": "user", "content": final_prompt})
