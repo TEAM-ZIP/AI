@@ -79,34 +79,34 @@
 1. **프로젝트 코드 및 종속성 설치**<br>
    프로젝트에서 사용된 Python 라이브러리를 설치하려면 위 How to Build와 같이 먼저 가상 환경을 설정한 후 아래 명령어를 실행합니다.<br>
 
-(1) 라이브러리 설치<br>
-`requirements.txt` 파일에 포함된 모든 종속성을 설치합니다.
+   (1) 라이브러리 설치<br>
+   `requirements.txt` 파일에 포함된 모든 종속성을 설치합니다.
 
-```bash
-pip install -r requirements.txt
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 - `requirements.txt`에는 다음과 같은 주요 라이브러리가 포함되어 있습니다.
 
-```plaintext
-chromadb
-fastapi
-python-dotenv
-pydantic
-uvicorn
-openai
-```
+  ```plaintext
+  chromadb
+  fastapi
+  python-dotenv
+  pydantic
+  uvicorn
+  openai
+  ```
 
-(2) 설치된 라이브러리 확인<br>
-아래 명령어를 사용해 설치된 라이브러리를 확인합니다.
+  (2) 설치된 라이브러리 확인<br>
+  아래 명령어를 사용해 설치된 라이브러리를 확인합니다.
 
-```
-pip list
-```
+  ```
+  pip list
+  ```
 
 <br>
 
-1. **빌드 및 실행**
+2. **빌드 및 실행**
 
 ```
 python -m uvicorn app.main:app --reload
@@ -267,11 +267,3 @@ python3 chroma_reset.py
 3. **Uvicorn**: [Uvicorn](https://www.uvicorn.org/)
 4. **OpenAI GPT-4** : [OpenAI](https://openai.com/)
 5. **Pydantic**: [Pyndatic](https://docs.pydantic.dev/latest/)
-
-```
-
-```
-
-```
-
-```
